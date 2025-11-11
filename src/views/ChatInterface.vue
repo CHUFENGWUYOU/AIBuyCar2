@@ -1,6 +1,13 @@
 <!-- ChatInterface.vue -->
 <template>
   <div class="chat-container">
+    <!-- 查看历史记录按钮 -->
+    <div class="history-button-container">
+      <button class="history-button" @click="showHistoryModal = true">
+        查看咨询记录
+      </button>
+    </div>
+    
     <!-- 聊天历史区域 -->
     <div class="chat-history" ref="chatHistory">
       <div 
@@ -14,7 +21,7 @@
     </div>
 
     <!-- 输入区域 -->
-    <div class="input-area">
+    <div class="input-area" v-if="!isConversationEnded">
       <div class="input-wrapper">
         <textarea 
           ref="messageInput"
@@ -34,6 +41,114 @@
       >
         发送
       </button>
+    </div>
+    
+    <!-- 结束对话提示 -->
+    <div class="end-conversation" v-else>
+      <div class="end-message">
+        感谢您使用购车咨询服务，祝您购车愉快！
+      </div>
+      <button class="restart-button" @click="restartConversation">
+        重新开始咨询
+      </button>
+    </div>
+    
+    <!-- 历史记录模态框 -->
+    <div class="modal-overlay" v-if="showHistoryModal" @click="showHistoryModal = false">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3>咨询记录</h3>
+          <button class="close-button" @click="showHistoryModal = false">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="history-list">
+            <div 
+              v-for="(record, index) in consultationHistory" 
+              :key="index"
+              class="history-item"
+              @click="selectHistoryRecord(record)"
+            >
+              <div class="history-title">
+                咨询记录 #{{ index + 1 }}
+              </div>
+              <div class="history-summary">
+                {{ getHistorySummary(record) }}
+              </div>
+              <div class="history-date">
+                {{ record.date }}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-close-button" @click="showHistoryModal = false">
+            关闭
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 详细记录模态框 -->
+    <div class="modal-overlay" v-if="showDetailModal" @click="showDetailModal = false">
+      <div class="modal-content detail-modal" @click.stop>
+        <div class="modal-header">
+          <h3>详细咨询记录</h3>
+          <button class="close-button" @click="showDetailModal = false">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="detail-content" v-if="selectedRecord">
+            <div class="detail-section">
+              <h4>用户需求</h4>
+              <div class="requirement-item">
+                <span class="label">预算范围:</span>
+                <span>{{ selectedRecord.requirements.budget_range || '未提供' }}</span>
+              </div>
+              <div class="requirement-item">
+                <span class="label">品牌偏好:</span>
+                <span>{{ selectedRecord.requirements.brand_preference || '未提供' }}</span>
+              </div>
+              <div class="requirement-item">
+                <span class="label">燃料类型:</span>
+                <span>{{ selectedRecord.requirements.fuel_type || '未提供' }}</span>
+              </div>
+              <div class="requirement-item">
+                <span class="label">偏好车型:</span>
+                <span>{{ selectedRecord.requirements.preferred_type || '未提供' }}</span>
+              </div>
+              <div class="requirement-item">
+                <span class="label">使用场景:</span>
+                <span>{{ selectedRecord.requirements.use_case || '未提供' }}</span>
+              </div>
+            </div>
+            
+            <div class="detail-section">
+              <h4>推荐结果</h4>
+              <div class="recommendation-content">
+                {{ selectedRecord.recommendation }}
+              </div>
+            </div>
+            
+            <div class="detail-section">
+              <h4>对话详情</h4>
+              <div class="conversation-detail">
+                <div 
+                  v-for="(msg, idx) in selectedRecord.conversation"
+                  :key="idx"
+                  :class="['message', msg.sender]"
+                >
+                  <div class="message-content">{{ msg.content }}</div>
+                  <div class="timestamp">{{ msg.timestamp }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-close-button" @click="showDetailModal = false">
+            关闭
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -55,6 +170,8 @@ export default {
       },
       // 当前询问的问题索引
       currentQuestionIndex: 0,
+      // 对话是否已结束
+      isConversationEnded: false,
       // 定义问题序列
       questions: [
         {
@@ -81,6 +198,67 @@ export default {
           key: 'use_case',
           text: '您的主要使用场景是什么？（例如：日常通勤、家庭出行、商务用车等）',
           placeholder: '请输入您的主要使用场景...'
+        }
+      ],
+      // 历史记录相关
+      showHistoryModal: false,
+      showDetailModal: false,
+      selectedRecord: null,
+      consultationHistory: [
+        // 示例数据，实际应从后端获取
+        {
+          id: 1,
+          date: '2023-05-15 14:30',
+          requirements: {
+            budget_range: '15-20万',
+            brand_preference: '丰田',
+            fuel_type: '汽油',
+            preferred_type: 'SUV',
+            use_case: '家庭出行'
+          },
+          recommendation: '根据您的需求，我们为您推荐以下车型：\n1. 丰田RAV4荣放 - 空间宽敞，适合家庭使用\n2. 本田CR-V - 燃油经济性好，可靠性高\n3. 大众途岳 - 德系品质，操控性能优秀',
+          conversation: [
+            { sender: 'system', content: '您好！欢迎使用购车咨询服务。为了更好地为您推荐合适的车型，我需要了解一些您的购车需求。', timestamp: '14:30' },
+            { sender: 'system', content: '请问您的购车预算范围是多少？（例如：10-15万、20万以上等）', timestamp: '14:30' },
+            { sender: 'user', content: '15-20万', timestamp: '14:31' },
+            { sender: 'system', content: '您有特别偏好的汽车品牌吗？（例如：丰田、本田、奔驰等）', timestamp: '14:31' },
+            { sender: 'user', content: '丰田', timestamp: '14:32' },
+            { sender: 'system', content: '您倾向于哪种燃料类型的车辆？（例如：汽油、柴油、纯电动、混动等）', timestamp: '14:32' },
+            { sender: 'user', content: '汽油', timestamp: '14:32' },
+            { sender: 'system', content: '您更喜欢哪种类型的车型？（例如：轿车、SUV、MPV、跑车等）', timestamp: '14:33' },
+            { sender: 'user', content: 'SUV', timestamp: '14:33' },
+            { sender: 'system', content: '您的主要使用场景是什么？（例如：日常通勤、家庭出行、商务用车等）', timestamp: '14:33' },
+            { sender: 'user', content: '家庭出行', timestamp: '14:34' },
+            { sender: 'system', content: '感谢您提供的信息，您当前的购车需求如下：\n预算范围：15-20万\n品牌偏好：丰田\n燃料类型：汽油\n偏好车型：SUV\n使用场景：家庭出行\n\n正在为您推荐合适的车型...', timestamp: '14:34' },
+            { sender: 'system', content: '根据您的需求，我们为您推荐以下车型：\n1. 丰田RAV4荣放 - 空间宽敞，适合家庭使用\n2. 本田CR-V - 燃油经济性好，可靠性高\n3. 大众途岳 - 德系品质，操控性能优秀', timestamp: '14:35' }
+          ]
+        },
+        {
+          id: 2,
+          date: '2023-05-10 10:15',
+          requirements: {
+            budget_range: '20万以上',
+            brand_preference: '宝马',
+            fuel_type: '纯电动',
+            preferred_type: '轿车',
+            use_case: '商务用车'
+          },
+          recommendation: '根据您的需求，我们为您推荐以下车型：\n1. 宝马i3 - 豪华电动轿车，科技感强\n2. 特斯拉Model S - 续航里程长，智能驾驶先进\n3. 奔驰EQS - 豪华舒适，内饰精致',
+          conversation: [
+            { sender: 'system', content: '您好！欢迎使用购车咨询服务。为了更好地为您推荐合适的车型，我需要了解一些您的购车需求。', timestamp: '10:15' },
+            { sender: 'system', content: '请问您的购车预算范围是多少？（例如：10-15万、20万以上等）', timestamp: '10:15' },
+            { sender: 'user', content: '20万以上', timestamp: '10:16' },
+            { sender: 'system', content: '您有特别偏好的汽车品牌吗？（例如：丰田、本田、奔驰等）', timestamp: '10:16' },
+            { sender: 'user', content: '宝马', timestamp: '10:17' },
+            { sender: 'system', content: '您倾向于哪种燃料类型的车辆？（例如：汽油、柴油、纯电动、混动等）', timestamp: '10:17' },
+            { sender: 'user', content: '纯电动', timestamp: '10:17' },
+            { sender: 'system', content: '您更喜欢哪种类型的车型？（例如：轿车、SUV、MPV、跑车等）', timestamp: '10:18' },
+            { sender: 'user', content: '轿车', timestamp: '10:18' },
+            { sender: 'system', content: '您的主要使用场景是什么？（例如：日常通勤、家庭出行、商务用车等）', timestamp: '10:18' },
+            { sender: 'user', content: '商务用车', timestamp: '10:19' },
+            { sender: 'system', content: '感谢您提供的信息，您当前的购车需求如下：\n预算范围：20万以上\n品牌偏好：宝马\n燃料类型：纯电动\n偏好车型：轿车\n使用场景：商务用车\n\n正在为您推荐合适的车型...', timestamp: '10:19' },
+            { sender: 'system', content: '根据您的需求，我们为您推荐以下车型：\n1. 宝马i3 - 豪华电动轿车，科技感强\n2. 特斯拉Model S - 续航里程长，智能驾驶先进\n3. 奔驰EQS - 豪华舒适，内饰精致', timestamp: '10:20' }
+          ]
         }
       ]
     };
@@ -196,6 +374,9 @@ export default {
           content: response,
           timestamp: this.getCurrentTime()
         });
+        
+        // 结束对话
+        this.endConversation();
       } catch (error) {
         this.messages.push({
           sender: 'system',
@@ -216,6 +397,9 @@ export default {
           content: response,
           timestamp: this.getCurrentTime()
         });
+        
+        // 结束对话
+        this.endConversation();
       } catch (error) {
         this.messages.push({
           sender: 'system',
@@ -225,6 +409,57 @@ export default {
       }
     },
 
+    // 结束对话
+    endConversation() {
+      this.isConversationEnded = true;
+      
+      // 添加结束语
+      this.messages.push({
+        sender: 'system',
+        content: '以上就是本次购车咨询的全部内容。如果您还有其他问题，欢迎随时联系我们。祝您购车愉快！',
+        timestamp: this.getCurrentTime()
+      });
+      
+      this.$nextTick(() => {
+        this.scrollToBottom();
+      });
+    },
+
+    // 重新开始对话
+    restartConversation() {
+      // 重置所有状态
+      this.carRequirements = {
+        brand_preference: '',
+        budget_range: '',
+        fuel_type: '',
+        preferred_type: '',
+        use_case: ''
+      };
+      this.currentQuestionIndex = 0;
+      this.isConversationEnded = false;
+      this.userInput = '';
+      
+      // 清空聊天记录并重新初始化
+      this.messages = [];
+      
+      // 初始化时提出第一个问题
+      this.messages.push({
+        sender: 'system',
+        content: '您好！欢迎使用购车咨询服务。为了更好地为您推荐合适的车型，我需要了解一些您的购车需求。',
+        timestamp: this.getCurrentTime()
+      });
+      
+      this.messages.push({
+        sender: 'system',
+        content: this.currentQuestion.text,
+        timestamp: this.getCurrentTime()
+      });
+      
+      this.$nextTick(() => {
+        this.scrollToBottom();
+      });
+    },
+
     // 调用推荐服务
     async callRecommendationService(requirements) {
       // 这里应该实际调用推荐API
@@ -232,9 +467,7 @@ export default {
       return `根据您的需求，我们为您推荐以下车型：
 1. 丰田卡罗拉 - 经济实用，适合城市通勤
 2. 本田思域 - 动力强劲，外观时尚
-3. 大众朗逸 - 空间宽敞，适合家庭使用
-      
-您可以进一步说明您的具体需求，我会为您提供更精准的推荐。`;
+3. 大众朗逸 - 空间宽敞，适合家庭使用`;
     },
 
     // 调用LLM服务
@@ -247,6 +480,21 @@ export default {
     scrollToBottom() {
       const container = this.$refs.chatHistory;
       container.scrollTop = container.scrollHeight;
+    },
+    
+    // 获取历史记录摘要
+    getHistorySummary(record) {
+      const budget = record.requirements.budget_range || '未提供';
+      const brand = record.requirements.brand_preference || '未提供';
+      const type = record.requirements.preferred_type || '未提供';
+      return `${budget} | ${brand} | ${type}`;
+    },
+    
+    // 选择历史记录查看详情
+    selectHistoryRecord(record) {
+      this.selectedRecord = record;
+      this.showHistoryModal = false;
+      this.showDetailModal = true;
     }
   },
 
@@ -269,7 +517,6 @@ export default {
     });
   }
 };
-
 </script>
 
 <style scoped>
@@ -283,6 +530,29 @@ export default {
   background: radial-gradient(1200px 600px at 50% -10%, rgba(59,130,246,0.15), transparent 60%),
               radial-gradient(800px 400px at 100% 10%, rgba(16,185,129,0.1), transparent 60%);
   padding: 20px;
+  position: relative;
+}
+
+.history-button-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.history-button {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(148,163,184,0.25);
+  background: rgba(15,23,42,0.85);
+  color: #e5e7eb;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.history-button:hover {
+  background: rgba(59,130,246,0.2);
+  border-color: rgba(59,130,246,0.5);
 }
 
 .chat-history {
@@ -417,5 +687,228 @@ export default {
 .send-button:active:not(:disabled) {
   transform: translateY(1px);
   filter: brightness(0.95);
+}
+
+.end-conversation {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(2, 6, 23, 0.5);
+  border-radius: 12px;
+  border: 1px solid rgba(148,163,184,0.15);
+}
+
+.end-message {
+  color: #e5e7eb;
+  font-size: 16px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.restart-button {
+  padding: 10px 24px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #3b82f6, #22c55e);
+  color: white;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: transform .08s ease, filter .2s ease, opacity .2s ease;
+}
+
+.restart-button:hover {
+  filter: brightness(1.1);
+}
+
+.restart-button:active {
+  transform: translateY(1px);
+  filter: brightness(0.95);
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: rgba(15,23,42,0.95);
+  border-radius: 12px;
+  border: 1px solid rgba(148,163,184,0.25);
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid rgba(148,163,184,0.15);
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #e5e7eb;
+  font-size: 18px;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.close-button:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.history-item {
+  padding: 15px;
+  border-radius: 10px;
+  background: rgba(2, 6, 23, 0.5);
+  border: 1px solid rgba(148,163,184,0.15);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.history-item:hover {
+  background: rgba(59,130,246,0.1);
+  border-color: rgba(59,130,246,0.3);
+}
+
+.history-title {
+  font-weight: bold;
+  color: #e5e7eb;
+  margin-bottom: 8px;
+}
+
+.history-summary {
+  color: #9ca3af;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.history-date {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.modal-footer {
+  padding: 15px 20px;
+  border-top: 1px solid rgba(148,163,184,0.15);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.modal-close-button {
+  padding: 8px 20px;
+  border-radius: 8px;
+  border: 1px solid rgba(148,163,184,0.25);
+  background: rgba(15,23,42,0.85);
+  color: #e5e7eb;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modal-close-button:hover {
+  background: rgba(59,130,246,0.2);
+  border-color: rgba(59,130,246,0.5);
+}
+
+.detail-modal .detail-section {
+  margin-bottom: 20px;
+}
+
+.detail-modal .detail-section h4 {
+  color: #e5e7eb;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(148,163,184,0.15);
+  padding-bottom: 5px;
+}
+
+.requirement-item {
+  display: flex;
+  margin-bottom: 8px;
+}
+
+.requirement-item .label {
+  color: #9ca3af;
+  width: 100px;
+  font-weight: 500;
+}
+
+.requirement-item span:last-child {
+  color: #e5e7eb;
+  flex: 1;
+}
+
+.recommendation-content {
+  background: rgba(2, 6, 23, 0.5);
+  border-radius: 8px;
+  padding: 12px;
+  color: #e5e7eb;
+  white-space: pre-line;
+  border: 1px solid rgba(148,163,184,0.15);
+}
+
+.conversation-detail {
+  max-height: 200px;
+  overflow-y: auto;
+  background: rgba(2, 6, 23, 0.3);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.conversation-detail .message {
+  margin-bottom: 10px;
+  max-width: 100%;
+}
+
+.conversation-detail .message-content {
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.conversation-detail .timestamp {
+  font-size: 10px;
+  padding-right: 4px;
 }
 </style>
