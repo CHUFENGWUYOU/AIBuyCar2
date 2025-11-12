@@ -7,6 +7,7 @@
       <button class="history-button" @click="showHistoryModal = true">
         查看咨询记录
       </button>
+      <button class="history-button" @click="$router.push('/points')">积分商城</button>
     </div>
     
     <!-- 聊天历史区域 -->
@@ -155,6 +156,7 @@
 </template>
 
 <script>
+import { earnPoints } from '@/services/points'
 export default {
   name: 'ChatInterface',
   data() {
@@ -426,6 +428,9 @@ export default {
         content: '以上就是本次购车咨询的全部内容。如果您还有其他问题，欢迎随时联系我们。祝您购车愉快！',
         timestamp: this.getCurrentTime()
       });
+
+      // 完成咨询奖励积分（例如 10 分）
+      earnPoints(10, '完成一次购车咨询');
       
       this.$nextTick(() => {
         this.scrollToBottom();
