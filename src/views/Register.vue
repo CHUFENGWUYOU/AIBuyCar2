@@ -7,6 +7,19 @@
     </div>
 
     <form class="card" @submit.prevent="submitRegister">
+
+      <div class="field">
+        <label class="label" for="account">账号</label>
+        <input
+          id="account"
+          class="input input-terminal"
+          type="text"
+          v-model.trim="account"
+          placeholder="请输入用户名"
+          autocomplete="username"
+        >
+      </div>
+
       <div class="field">
         <label class="label" for="nickname">昵称</label>
         <input
@@ -18,6 +31,30 @@
           autocomplete="nickname"
         >
       </div>
+
+      <div class="field">
+        <label class="label" for="name">姓名</label>
+        <input
+          id="name"
+          class="input input-terminal"
+          type="text"
+          v-model.trim="name"
+          placeholder="你的姓名"
+          autocomplete="name"
+        >
+      </div>
+      <div class="field">
+        <label class="label" for="telephone">手机号</label>
+        <input
+          id="telephone"
+          class="input input-terminal"
+          type="text"
+          v-model.trim="telephone"
+          placeholder="请输入手机号"
+          autocomplete="telephone"
+        >
+      </div>
+
       <div class="field">
         <label class="label" for="email">邮箱</label>
         <input
@@ -83,7 +120,10 @@ export default {
   name: 'Register',
   data() {
     return {
+      account: '',
       nickname: '',
+      name: '',
+      telephone: '',
       email: '',
       password: '',
       confirm: '',

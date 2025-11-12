@@ -14,7 +14,7 @@
           class="input input-terminal"
           type="text"
           v-model.trim="account"
-          placeholder="手机号 / 邮箱 / 用户名"
+          placeholder="请输入用户名"
           autocomplete="username"
         >
       </div>
